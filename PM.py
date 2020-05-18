@@ -171,6 +171,7 @@ def prod_mod_dep_le(time):
             balance = 1000 # уточнить
             data_f.loc['C_deposit_'+dep+ '_'+cur, time ] = data_f.loc['C_deposit_'+dep+ '_'+cur, Previous_period] + ParamD.loc['New_C_loan_deposit_' + dep + '_'+cur, time] - ParamD.loc['Repayments_C_deposit_' + dep + '_' + cur, time] - repayments_new_C_dep + balance 
     
+            # портфель вкладов фл
     
     
     
