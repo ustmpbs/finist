@@ -1,0 +1,2 @@
+# finist
+Stress-testing algorithm 
