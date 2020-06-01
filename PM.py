@@ -76,6 +76,9 @@ data_d = pd.DataFrame(data_d).rename(columns={0: "name"})
 # =========================================================================
 
 Period = ['T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8' ]
+Current = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8']
+Previous = ['T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+time='T2'
 
 for time in Period:
     data_f[time] =''
@@ -88,11 +91,9 @@ for i in data_f.index:
     data_f.loc[i, 'T0'] = ParamF.loc[i, 'value']
     
 for i in data_d.index:
-    data_d.loc[i, 'T1'] = ParamD.loc[i, 'T1']
+    for t in Current:
+        data_d.loc[i, t] = ParamD.loc[i, t]
 
-Current = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8']
-Previous = ['T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
-time='T2'
 
 
 
@@ -108,36 +109,38 @@ def prod_mod_cred_le(time):
         for cur in currency:
             
             # расчет npl
-            npl = (data_f.loc['C_loan_' + port +'_good_portf_'+ cur, Previous_period] * data_d.loc['PD_good_C_loan_' + port + '_' + cur, time]  +
-                   data_f.loc['C_loan_' + port +'_good_off_'+ cur, Previous_period] * data_d.loc['PD_good_C_loan_' + port + '_' + cur, time] * 0.02)/4  # insert ccf instead of 0.02
+            npl = (A.loc['C_loan_' + port +'_good_portf_'+ cur, Previous_period] * ParamD.loc['PD_good_C_loan_' + port + '_' + cur, time]  +
+                   A.loc['C_loan_' + port +'_good_off_'+ cur, Previous_period] * ParamD.loc['PD_good_C_loan_' + port + '_' + cur, time] * ParamD.loc['CCF', time])/4 
             
                    
             # расчет выгашивания
-            duration = data_f.loc['Duration_C_loan_' + port + '_' + cur, time]/0.25
+            duration = A.loc['Duration_C_loan_' + port + '_' + cur, time]/0.25
             if duration  >= period_t:
                 t = int(duration)
-                repayments =  data_d.loc['New_loans_C_loan_' + port + '_' + cur, Current[k - t]]  # check out the formula, guess there is an error
+                repayments =  ParamD.loc['New_loans_C_loan_' + port + '_' + cur, Current[k - t]]  # check out the formula, guess there is an error
             else:
                 repayments = 0
             
             # работающие кредиты для каждого из портфелей  
             # проверить и дописать
-            data_f.loc['C_loan_' + port + '_good_portf_'+ cur, time]= data_f.loc['C_loan_' + port + '_good_portf_'+ cur, Previous_period] - npl + data_d.loc['New_loans_C_loan' + port + '_' + cur, time] - data_d.loc['Repayment_C_loan_' + port + '_' + cur, time ] - repayments
+            A.loc['C_loan_' + port + '_good_portf_'+ cur, time]= A.loc['C_loan_' + port + '_good_portf_'+ cur, Previous_period] - npl + ParamD.loc['New_loans_C_loan' + port + '_' + cur, time] - ParamD.loc['Repayment_C_loan_' + port + '_' + cur, time ] - repayments
             
             # работающие кредиты по нкл
             balancirov = 1000 # нужно уточнить формулу
-            data_f.loc['C_loan_' + port + '_good_off_' + cur, time] = data_f.loc['C_loan_' + port +'_good_portf_'+ cur, time] * data_f.loc['C_loan_' + port + '_good_off_' + cur, Previous_period]/data_f.loc['C_loan_' + port +'_good_portf_'+ cur, Previous_period] + balancirov
+            A.loc['C_loan_' + port + '_good_off_' + cur, time] = A.loc['C_loan_' + port +'_good_portf_'+ cur, time] * A.loc['C_loan_' + port + '_good_off_' + cur, Previous_period]/A.loc['C_loan_' + port +'_good_portf_'+ cur, Previous_period] + balancirov
             
             # Резервы по работающим кредитам
-            data_f.loc['C_loan_'+port+'_good_prov_'+cur, time] = data_f.loc['C_loan_'+port+'_good_portf_'+cur, time] * data_d.loc['Prov_good_C_loan_'+port+'_'+cur, time] * (-1)
+            A.loc['C_loan_'+port+'_good_prov_'+cur, time] = A.loc['C_loan_'+port+'_good_portf_'+cur, time] * ParamD.loc['Prov_good_C_loan_'+port+'_'+cur, time] * (-1)
             
             # Неработающие кредиты
-            data_f.loc['C_loan_' + port + '_npl_portf_' + cur, time] = data_f.loc['C_loan_' + port + '_npl_portf_' + cur, Previous_period] + npl
+            A.loc['C_loan_' + port + '_npl_portf_' + cur, time] = A.loc['C_loan_' + port + '_npl_portf_' + cur, Previous_period] + npl
             
             # Резервы по нарботающим кредитам
-            data_f.loc['C_loan_'+port+'_npl_prov'+cur, time] = data_f.loc['C_loan_'+port+'_npl_portf'+cur, time] * data_d.loc['Prov_NPL_C_loan_'+port+'_'+cur, time] * (-1)
+            A.loc['C_loan_'+port+'_npl_prov'+cur, time] = A.loc['C_loan_'+port+'_npl_portf'+cur, time] * ParamD.loc['Prov_NPL_C_loan_'+port+'_'+cur, time] * (-1)
             
-            
+            # ставка привлечения по кредитам ЮЛ
+            A.loc['Int_rate_act_С_loan_'+port+'_'+cur, time] = A.loc['Int_rate_act_С_loan_'+port+'_'+cur, Previous_period] + (ParamD.loc['Yeild_growth_1D_'+cur, time] + ParamD.loc[rating+'_spread_'+cur, time])/100 # уточнить Yield_growth
+
     
     
 def prod_mod_cred_fl(time):
@@ -149,13 +152,38 @@ def prod_mod_cred_fl(time):
     for port in portf_ind:
         for cur in currency:
             
+            #Прирост неработающих кредитов ФЛ
+            npl_fl = (A.loc['Ind_loan_' + port +'_good_portf_'+ cur, Previous_period] * ParamD.loc['PD_good_ind_loan_' + port + '_' + cur, time]  +
+                   A.loc['Ind_loan_' + port +'_good_off_'+ cur, Previous_period] * ParamD.loc['PD_good_ind_loan_' + port + '_' + cur, time] * ParamD.loc['CCF', time])/4  
+
+            
             # расчет актуальной ставки по кредитам ФЛ
             yield_growth = 0.5 # уточнить потом, что это значит, откуда брать?
-            data_f.loc['Int_rate_act_Ind_loan_' + port + '_' + cur, time] = data_f.loc['Int_rate_act_Ind_loan_' + port + '_' + cur, Previous_period] + (yield_growth + ParamD.loc[rating+'_spread_'+cur, time])/100
+            A.loc['Int_rate_act_Ind_loan_' + port + '_' + cur, time] = A.loc['Int_rate_act_Ind_loan_' + port + '_' + cur, Previous_period] + (yield_growth + ParamD.loc[rating+'_spread_'+cur, time])/100
             int_rate = data_f.loc['Int_rate_act_Ind_loan_' + port + '_' + cur, time]
+            int_rate_previous = data_f.loc['Int_rate_act_Ind_loan_' + port + '_' + cur, Previous_period]
         
-     
+            # Выгашивание кредитов, выданных в сценарный период
+            # уточнить про int_rate что с периодом?
+            data_d.loc['Repayment_ind_loan_' + port + "_" + cur, time] = data_d.loc['New_loan_ind_loan_'+port+'_'+cur, Previous_period] * int_rate_previous/12 * (1+(int_rate_previous/12)**A.loc['Duration_Ind_loan_' + port + '_' + cur, time]*12)/ (2*(1+(int_rate_previous/12)**A.loc['Duration_Ind_loan_' + port + '_' + cur, time]*12) -2) +  data_d.loc['Repayment_ind_loan_' + port + "_" + cur, Previous_period]
+            
+            # потери по кредитному риску
+            lgd_good=0.5
+            lgd_npl=0.4
+            el = (-1) * A.loc['Ind_loan_' + port + '_good_portf_' + cur, time] * ParamD.loc['PD_good_ind_loan_'+port+'_'+cur, time] *lgd_good - A.loc['Ind_loan_'+port+'_npl_portf_' + cur, time] * lgd_npl
     
+            # Корректировка резервов до ожидаемых кредитных убытков 
+            assets_correct = el - A.loc['Ind_loan_' + port + '_good_prov_' + cur, time] - A.loc['Ind_loan_'+port+'_npl_portf_' + cur, time]
+            
+            
+            # Расходы на доформирование резервов 
+            
+            
+            # ставка привлечения по кредитам ФЛ
+            A.loc['Int_rate_act_Ind_loan_'+port+'_'+cur, time] = A.loc['Int_rate_act_Ind_loan_'+port+'_'+cur, Previous_period] + (ParamD.loc['Yeild_growth_1D_'+cur, time] + ParamD.loc[rating+'_spread_'+cur, time])/100 # уточнить Yield_growth
+
+            
+            
     
 def prod_mod_dep_le(time):
     k = 0
@@ -169,15 +197,32 @@ def prod_mod_dep_le(time):
             # портфель депозитов
             repayments_new_C_dep = 1000 #уточнить
             balance = 1000 # уточнить
-            data_f.loc['C_deposit_'+dep+ '_'+cur, time ] = data_f.loc['C_deposit_'+dep+ '_'+cur, Previous_period] + ParamD.loc['New_C_loan_deposit_' + dep + '_'+cur, time] - ParamD.loc['Repayments_C_deposit_' + dep + '_' + cur, time] - repayments_new_C_dep + balance 
+            A.loc['C_deposit_'+dep+ '_'+cur, time ] = A.loc['C_deposit_'+dep+ '_'+cur, Previous_period] + ParamD.loc['New_C_loans_deposit_' + dep + '_'+cur, time] - ParamD.loc['Repayments_C_deposit_' + dep + '_' + cur, time] - repayments_new_C_dep + balance 
     
-            # портфель вкладов фл
-    
-    
-    
-    
+            # ставка привлечения по депоизтам ЮЛ
+            A.loc['Int_rate_act_C_deposit_'+dep+'_'+cur, time] = A.loc['Int_rate_act_C_deposit_'+dep+'_'+cur, Previous_period] + (ParamD.loc['Yeild_growth_1D_'+cur, time] + ParamD.loc[rating+'_spread_'+cur, time])/100 # уточнить Yield_growth
+            
     
     
+    
+    
+def prod_mod_dep_fl(time):
+    k = 0
+    while time != Current[k]:
+        k += 1
+    Previous_period = Previous[k]
+    
+    for cur in currency:
+        
+        # портфель вкладов ФЛ
+        repayments_new_Ind_dep = 1000
+        A.loc['Ind_deposit_'+cur, time] = A.loc['Ind_deposit_'+cur, time] + ParamD.loc['New_loans_Ind_deposit_' + cur, time] - ParamD.loc['Repayments_Ind_deposit_'  + cur, time] - repayments_new_Ind_dep + balance 
+        
+        
+        # ставка привлечения по вкладам ФЛ
+        A.loc['Int_rate_act_Ind_deposit_'+cur, time] = A.loc['Int_rate_act_Ind_deposit_'+cur, Previous_period] + (ParamD.loc['Yeild_growth_1D_'+cur, time] + ParamD.loc[rating+'_spread_'+cur, time])/100 # уточнить Yield_growth
+
+        
     
     
 
