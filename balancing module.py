@@ -168,6 +168,39 @@ def step5(time, diff):
     diff -= Funds_raised_repo
     return diff
 
+
+def summary(list_of_port):
+    
+    # считает сумму вновь выданных кредитов 
+    # в разрезе кредитов ЮЛ и ФЛ
+    # с учетом валютной структуры
+    
+    if list_of_port == 'portf_corp':
+        beg = 'C_loan_'
+    else:
+        beg = 'Ind_loan_'
+            
+    for port in list_of_port:
+        for cur in currency:
+          new_loans =  A.loc[beg + port + '_' + cur, time] - A.loc[beg + port + '_' + cur, Previous_period]
+          sum_loans += new_loans
+    return sum_loans
+
+# определяем значение балансировки кредитов
+bal_new_loans = 0
+def step6(time, diff):
+    
+    # выполняет 6 шаг алгоритма балансировки (изменение объема кредитования)
+    
+    # Расчет суммарного объема вновь выданных кредитов
+    sum_loans = 0
+    sum_loans += summary(portf_corp) + summary(portf_ind)
+    
+    limit_reduction_new = sum_loans - bal_new_loans
+    
+    bal_new_loans = bal_new_loans - min(diff, limit_reduction_new)
+
+
 # определяет допустимый уровень погрешности, в пределах которого различия между активами и пассивами игнорируются
 tolerance = 10    
     
