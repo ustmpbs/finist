@@ -58,20 +58,37 @@ difference = abs(A.loc['Assets_total', 'T1'] - A.loc['Liab_total', 'T1'])
 def shares_of_la(time, diff):
     
     # рассчитывает доли ликвидных активов, в которые должны быть инвестированы средства в слуаче, если пассивы больше активов
+    # проверяет наличие дефицита капитала, исходя из которой выбираются активы, в которые инвестируются
     # присваивает значения переменным с префиксом "Bal_"
     # рассчитвыает баланс заново
+    
     la['shares_assets'] = ''
-    summ = A.loc[la.index, Previous_period ].sum()
-    for x in la.index:
-        la.loc[x, 'shares_assets'] = A.loc[x, Previous_period]/ summ
-        if la.loc[x, 'hla_id'] == 1:
-            if x.startswith('CBR'):
-                row = ["Bal_" + x]
+    if A.loc['Capital_deficit', time] > 0:
+        
+        summ = A.loc[la[la['cap_def_case'] == 1].index, Previous_period].sum()
+        for x in la[la['cap_def_case'] == 1].index:
+            la.loc[x, 'shares_assets'] = A.loc[x, Previous_period]/ summ
+            if la.loc[x, 'hla_id'] == 1:
+                if x.startswith('CBR'):
+                    row = ["Bal_" + x]
+                else:
+                    row = ["Bal_" + x[0].lower()+x[1:]]
+                A.loc[row, time] = la.loc[x, 'shares_assets'] * diff
             else:
-                row = ["Bal_" + x[0].lower()+x[1:]]
-            A.loc[row, time] = la.loc[x, 'shares_assets'] * diff
-        else:
-            A.loc[x, time] += diff * la.loc[x, 'shares_assets']
+                A.loc[x, time] += diff * la.loc[x, 'shares_assets']
+    else:
+        summ = A.loc[la.index, Previous_period ].sum()
+        for x in la.index:
+            la.loc[x, 'shares_assets'] = A.loc[x, Previous_period]/ summ
+            if la.loc[x, 'hla_id'] == 1:
+                if x.startswith('CBR'):
+                    row = ["Bal_" + x]
+                else:
+                    row = ["Bal_" + x[0].lower()+x[1:]]
+                A.loc[row, time] = la.loc[x, 'shares_assets'] * diff
+            else:
+                A.loc[x, time] += diff * la.loc[x, 'shares_assets']
+    
     calc_balance(time)
 
 shares_of_la('T1', difference)
@@ -82,7 +99,7 @@ def step1(time, diff):
     # рассчитывает в предыдущий момент времени доли ликвидных активов, из которых средства будут вычитаться
     # рассчитывает предел ликвидных средств
     # присваивает значения переменным с префиксом "Bal_" со знаком "-" (минус)
-    # перерассчиыват остаток разницы между активами и пассивами
+    # перерассчиыват остаток разницы между активами и пассивами 
     
     Bal_hla = min(diff, max(0, A.loc['Liq_assets', time] - limits.loc['Limit_Min_Liq_r', time] * A.loc['Liq_assets', time]))
     la['shares_liab'] = ''
@@ -186,6 +203,23 @@ def summary(list_of_port):
           sum_loans += new_loans
     return sum_loans
 
+def devide(list_of_port):
+    
+    # распределяет объем снижения кредитования
+    # в разрезе кредитов ЮЛ и ФЛ
+    # с учетом валютной структуры
+    
+    if list_of_port == 'portf_corp':
+        beg = 'C_loan_'
+    else:
+        beg = 'Ind_loan_'
+            
+    for port in list_of_port:
+        for cur in currency:
+            A.loc[beg + port + '_' + cur, time] =  A.loc[beg + port + '_' + cur, time] * (1 - bal_new_loans/sum_loans)
+    
+
+
 # определяем значение балансировки кредитов
 bal_new_loans = 0
 def step6(time, diff):
@@ -196,16 +230,26 @@ def step6(time, diff):
     sum_loans = 0
     sum_loans += summary(portf_corp) + summary(portf_ind)
     
+    # определяет лимит по снижению кредитов
     limit_reduction_new = sum_loans - bal_new_loans
     
+    # расчет объема снижения кредитования
     bal_new_loans = bal_new_loans - min(diff, limit_reduction_new)
-
+    
+    # перераспределение кредитов
+    devide(portf_corp)
+    devide(portf_ind)
+    
+    # определяет остаток разницы между активами и пассивами
+    diff -= bal_new_loans
+    
+    return diff
 
 # определяет допустимый уровень погрешности, в пределах которого различия между активами и пассивами игнорируются
 tolerance = 10    
     
 # перечень названий функций балансировщика, на которые я буду ссылаться
-steps = ['step1(time, difference)', 'step2(time, difference)', 'step3(time, difference)', 'step4(time, difference)', 'step5(time, difference)']
+steps = ['step1(time, difference)', 'step2(time, difference)', 'step3(time, difference)', 'step4(time, difference)', 'step5(time, difference)', 'step6(time, difference)']
 
 
 def balancing(time):
