@@ -141,7 +141,8 @@ def prod_mod_cred_le(time):
             # ставка привлечения по кредитам ЮЛ
             A.loc['Int_rate_act_С_loan_'+port+'_'+cur, time] = A.loc['Int_rate_act_С_loan_'+port+'_'+cur, Previous_period] + (ParamD.loc['Yeild_growth_1D_'+cur, time] + ParamD.loc[rating+'_spread_'+cur, time])/100 # уточнить Yield_growth
 
-    
+            for r in range(1:8):
+                sum_rerate_cred_le = ParamF.loc['Rerate_share_'+ r +'P_C_loan_'+ port +'_' + cur, 'value']
     
 def prod_mod_cred_fl(time):
     k = 0
@@ -182,7 +183,8 @@ def prod_mod_cred_fl(time):
             # ставка привлечения по кредитам ФЛ
             A.loc['Int_rate_act_Ind_loan_'+port+'_'+cur, time] = A.loc['Int_rate_act_Ind_loan_'+port+'_'+cur, Previous_period] + (ParamD.loc['Yeild_growth_1D_'+cur, time] + ParamD.loc[rating+'_spread_'+cur, time])/100 # уточнить Yield_growth
 
-            
+            for r in range(1:8):
+                sum_rerate_cred_fl = ParamF.loc['Rerate_share_'+ r +'P_Ind_loan_'+ port +'_' + cur, 'value']
             
     
 def prod_mod_dep_le(time):
@@ -201,6 +203,16 @@ def prod_mod_dep_le(time):
     
             # ставка привлечения по депоизтам ЮЛ
             A.loc['Int_rate_act_C_deposit_'+dep+'_'+cur, time] = A.loc['Int_rate_act_C_deposit_'+dep+'_'+cur, Previous_period] + (ParamD.loc['Yeild_growth_1D_'+cur, time] + ParamD.loc[rating+'_spread_'+cur, time])/100 # уточнить Yield_growth
+            
+            # Процентные расходы по депозитам ЮЛ
+            # Рассчитано по формуле с листа D_gov_r с файла ИСТ_2020
+            payments_ul = A.loc['Int_rate_act_C_deposit_'+dep+'_'+cur, Previous_period] * (A.loc['C_deposit_'+dep+ '_'+cur, Previous_period] + A.loc['C_deposit_'+dep+ '_'+cur, time ] - balance) # уточнить баланс
+            
+            
+            
+            # rerate
+            for r in range(1:8):
+                sum_rerate_dep_le = ParamF.loc['Rerate_share_'+ r +'P_C_deposit_'+ dep +'_' + cur, 'value']   
             
     
     
@@ -222,8 +234,10 @@ def prod_mod_dep_fl(time):
         # ставка привлечения по вкладам ФЛ
         A.loc['Int_rate_act_Ind_deposit_'+cur, time] = A.loc['Int_rate_act_Ind_deposit_'+cur, Previous_period] + (ParamD.loc['Yeild_growth_1D_'+cur, time] + ParamD.loc[rating+'_spread_'+cur, time])/100 # уточнить Yield_growth
 
-        
-    
+        # Процентные расходы по депозитам ЮЛ
+        # Рассчитано по формуле с листа D_gov_r с файла ИСТ_2020    
+        payments_le = A.loc['Int_rate_act_Ind_deposit_'+cur, Previous_period] * (A.loc['Ind_deposit_'+cur, Previous_period] +  A.loc['Ind_deposit_' + cur, time ] - balance)/4
+
     
 
 
