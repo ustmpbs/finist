@@ -101,7 +101,12 @@ def step1(time, diff):
     # присваивает значения переменным с префиксом "Bal_" со знаком "-" (минус)
     # перерассчиыват остаток разницы между активами и пассивами 
     
-    Bal_hla = min(diff, max(0, A.loc['Liq_assets', time] - limits.loc['Limit_Min_Liq_r', time] * A.loc['Liq_assets', time]))
+    if limits.loc['Limit_Min_Liq_r', time] == '':
+        lims = 0.7 * A.loc['Liq_assets', time]/ A.loc['Assets_total', time] #уточнить Liq_assets
+    else:
+        lims = limits.loc['Limit_Min_Liq_r', time]
+    
+    Bal_hla = min(diff, max(0, A.loc['Liq_assets', time] - lims * A.loc['Liq_assets', time]))
     la['shares_liab'] = ''
     summ = A.loc[la[la['hla_id'] == 1].index, Previous_period ].sum()
     for x in la[la['hla_id'] == 1].index:
