@@ -21,6 +21,7 @@ limits = limits.set_index('limits')
 la = pd.read_excel("balancing.xlsx", sheet_name = 'LA')
 la = la.set_index('name')
 
+
 # ===================================================================================================
 
 def calc_balance(Current_period):
@@ -58,7 +59,7 @@ difference = abs(A.loc['Assets_total', 'T1'] - A.loc['Liab_total', 'T1'])
 def shares_of_la(time, diff):
     
     # рассчитывает доли ликвидных активов, в которые должны быть инвестированы средства в слуаче, если пассивы больше активов
-    # проверяет наличие дефицита капитала, исходя из которой выбираются активы, в которые инвестируются
+    # проверяет наличие дефицита капитала, исходя из которой выбираются активы, в которые инвестируются средства
     # присваивает значения переменным с префиксом "Bal_"
     # рассчитвыает баланс заново
     
@@ -73,9 +74,10 @@ def shares_of_la(time, diff):
                     row = ["Bal_" + x]
                 else:
                     row = ["Bal_" + x[0].lower()+x[1:]]
-                A.loc[row, time] = la.loc[x, 'shares_assets'] * diff
+                A.loc[row, time] = diff * la.loc[x, 'shares_assets']
             else:
                 A.loc[x, time] += diff * la.loc[x, 'shares_assets']
+                bal_.loc['Bal_' + x, time] = diff * la.loc[x, 'shares_assets']
     else:
         summ = A.loc[la.index, Previous_period ].sum()
         for x in la.index:
@@ -85,9 +87,10 @@ def shares_of_la(time, diff):
                     row = ["Bal_" + x]
                 else:
                     row = ["Bal_" + x[0].lower()+x[1:]]
-                A.loc[row, time] = la.loc[x, 'shares_assets'] * diff
+                A.loc[row, time] = diff * la.loc[x, 'shares_assets']
             else:
                 A.loc[x, time] += diff * la.loc[x, 'shares_assets']
+                bal_.loc['Bal_' + x, time] = diff * la.loc[x, 'shares_assets']
     
     calc_balance(time)
 
@@ -102,7 +105,7 @@ def step1(time, diff):
     # перерассчиыват остаток разницы между активами и пассивами 
     
     if limits.loc['Limit_Min_Liq_r', time] == '':
-        lims = 0.7 * A.loc['Liq_assets', time]/ A.loc['Assets_total', time] #уточнить Liq_assets
+        lims = 0.7 * A.loc[la[la['hla_id'] == 1].index, time].sum()/ A.loc['Assets_total', time] 
     else:
         lims = limits.loc['Limit_Min_Liq_r', time]
     
@@ -251,7 +254,7 @@ def step6(time, diff):
     return diff
 
 # определяет допустимый уровень погрешности, в пределах которого различия между активами и пассивами игнорируются
-tolerance = 10    
+tolerance = 0.1    
     
 # перечень названий функций балансировщика, на которые я буду ссылаться
 steps = ['step1(time, difference)', 'step2(time, difference)', 'step3(time, difference)', 'step4(time, difference)', 'step5(time, difference)', 'step6(time, difference)']
